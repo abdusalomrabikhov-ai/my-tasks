@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Мои задачи">
+<meta name="theme-color" content="#ffffff">
+<title>Мои задачи</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon.png">
+<style>
+  :root {
+    --bg: #ffffff;
+    --bg2: #f5f5f5;
+    --bg3: #ebebeb;
+    --text: #111111;
+    --text2: #666666;
+    --text3: #999999;
+    --border: rgba(0,0,0,0.1);
+    --border2: rgba(0,0,0,0.18);
+    --radius: 12px;
+    --radius-sm: 8px;
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #111111;
+      --bg2: #1c1c1e;
+      --bg3: #2c2c2e;
+      --text: #f0f0f0;
+      --text2: #ababab;
+      --text3: #666666;
+      --border: rgba(255,255,255,0.1);
+      --border2: rgba(255,255,255,0.18);
+    }
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+  .topbar { background: var(--bg); position: sticky; top: 0; z-index: 10; padding: env(safe-area-inset-top, 44px) 20px 0; border-bottom: 0.5px solid var(--border); }
+  .topbar-inner { display: flex; align-items: flex-end; justify-content: space-between; padding-bottom: 12px; }
+  .topbar h1 { font-size: 28px; font-weight: 700; letter-spacing: -0.5px; }
+  .topbar-date { font-size: 13px; color: var(--text2); padding-bottom: 2px; }
+
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; padding: 16px 20px; }
+  .stat { background: var(--bg2); border-radius: var(--radius-sm); padding: 12px; text-align: center; }
+  .stat-n { font-size: 26px; font-weight: 600; letter-spacing: -1px; }
+  .stat-l { font-size: 11px; color: var(--text2); margin-top: 2px; }
+
+  .add-section { padding: 0 20px 16px; }
+  .add-card { background: var(--bg2); border-radius: var(--radius); padding: 14px; }
+  .add-input { width: 100%; background: transparent; border: none; font-size: 16px; color: var(--text); outline: none; padding: 4px 0 10px; }
+  .add-input::placeholder { color: var(--text3); }
+  .add-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .add-row select { flex: 1; min-width: 120px; height: 34px; padding: 0 10px; background: var(--bg3); border: none; border-radius: var(--radius-sm); font-size: 13px; color: var(--text); outline: none; }
+  .add-row input[type="datetime-local"] { flex: 1; min-width: 160px; height: 34px; padding: 0 10px; background: var(--bg3); border: none; border-radius: var(--radius-sm); font-size: 12px; color: var(--text); outline: none; }
+  .add-submit { height: 34px; padding: 0 16px; background: var(--text); color: var(--bg); border: none; border-radius: var(--radius-sm); font-size: 14px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+
+  .filters { display: flex; gap: 8px; padding: 0 20px 12px; overflow-x: auto; scrollbar-width: none; }
+  .filters::-webkit-scrollbar { display: none; }
+  .fchip { height: 30px; padding: 0 14px; border: 1px solid var(--border2); border-radius: 20px; font-size: 13px; background: transparent; color: var(--text2); cursor: pointer; white-space: nowrap; flex-shrink: 0; }
+  .fchip.active { background: var(--text); color: var(--bg); border-color: var(--text); }
+
+  .section-hdr { font-size: 11px; font-weight: 600; color: var(--text3); text-transform: uppercase; letter-spacing: 0.07em; padding: 0 20px 8px; }
+  .task-list { display: flex; flex-direction: column; gap: 1px; padding: 0 20px; margin-bottom: 20px; }
+  .task-item { background: var(--bg2); border-radius: var(--radius); padding: 14px 16px; display: flex; align-items: flex-start; gap: 12px; }
+  .task-item + .task-item { margin-top: 6px; }
+  .task-item.overdue { border-left: 3px solid #E24B4A; border-radius: 0 var(--radius) var(--radius) 0; }
+  .task-item.soon { border-left: 3px solid #EF9F27; border-radius: 0 var(--radius) var(--radius) 0; }
+  .task-item.done-item { opacity: 0.45; }
+
+  .cb { width: 22px; height: 22px; border-radius: 50%; border: 1.5px solid var(--border2); flex-shrink: 0; margin-top: 1px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+  .cb.checked { background: var(--text); border-color: var(--text); }
+  .cb.checked::after { content: ''; width: 11px; height: 7px; border-left: 2px solid var(--bg); border-bottom: 2px solid var(--bg); transform: rotate(-45deg) translateY(-1px); display: block; }
+
+  .task-body { flex: 1; min-width: 0; }
+  .task-title { font-size: 15px; line-height: 1.4; color: var(--text); }
+  .done-item .task-title { text-decoration: line-through; color: var(--text3); }
+  .task-meta { display: flex; gap: 6px; align-items: center; margin-top: 6px; flex-wrap: wrap; }
+  .tag { font-size: 11px; padding: 2px 8px; border-radius: 10px; font-weight: 500; }
+  .tag.work { background: #ddeeff; color: #1a5a99; }
+  .tag.personal { background: #dff5e8; color: #2a7a45; }
+  .tag.health { background: #fef0d8; color: #8a5200; }
+  .tag.learning { background: #eeecff; color: #4a3ab0; }
+  .tag.other { background: #f0eeea; color: #555555; }
+  @media (prefers-color-scheme: dark) {
+    .tag.work { background: #1a2d44; color: #6aaeff; }
+    .tag.personal { background: #1a3028; color: #5dcc88; }
+    .tag.health { background: #2e2010; color: #ffb84d; }
+    .tag.learning { background: #22204a; color: #a89fff; }
+    .tag.other { background: #2a2a2a; color: #aaaaaa; }
+  }
+  .time-lbl { font-size: 11px; color: var(--text3); }
+  .time-lbl.overdue { color: #E24B4A; }
+  .time-lbl.soon { color: #BA7517; }
+  .gcal-btn { font-size: 11px; padding: 2px 8px; border-radius: 10px; background: #ddeeff; color: #1a5a99; border: none; cursor: pointer; font-weight: 500; }
+  .gcal-btn.synced { background: #dff5e8; color: #2a7a45; cursor: default; }
+  @media (prefers-color-scheme: dark) {
+    .gcal-btn { background: #1a2d44; color: #6aaeff; }
+    .gcal-btn.synced { background: #1a3028; color: #5dcc88; }
+  }
+
+  .del-btn { width: 30px; height: 30px; background: transparent; border: none; cursor: pointer; color: var(--text3); font-size: 16px; display: flex; align-items: center; justify-content: center; border-radius: 8px; flex-shrink: 0; }
+  .del-btn:active { background: var(--bg3); }
+
+  .empty { text-align: center; padding: 2rem; color: var(--text3); font-size: 14px; }
+  .bottom-safe { height: calc(20px + var(--safe-bottom)); }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-inner">
+    <h1>Задачи</h1>
+    <span class="topbar-date" id="hdr-date"></span>
+  </div>
+</div>
+
+<div class="stats">
+  <div class="stat"><div class="stat-n" id="s-total">0</div><div class="stat-l">всего</div></div>
+  <div class="stat"><div class="stat-n" id="s-today">0</div><div class="stat-l">сегодня</div></div>
+  <div class="stat"><div class="stat-n" id="s-done">0</div><div class="stat-l">выполнено</div></div>
+</div>
+
+<div class="add-section">
+  <div class="add-card">
+    <input class="add-input" id="task-input" type="text" placeholder="Новая задача..." />
+    <div class="add-row">
+      <select id="task-cat">
+        <option value="work">Работа</option>
+        <option value="personal">Личное</option>
+        <option value="health">Здоровье</option>
+        <option value="learning">Обучение</option>
+        <option value="other">Другое</option>
+      </select>
+      <input type="datetime-local" id="task-time" />
+      <button class="add-submit" onclick="addTask()">+</button>
+    </div>
+  </div>
+</div>
+
+<div class="filters">
+  <button class="fchip active" onclick="setFilter('all',this)">Все</button>
+  <button class="fchip" onclick="setFilter('today',this)">Сегодня</button>
+  <button class="fchip" onclick="setFilter('active',this)">Активные</button>
+  <button class="fchip" onclick="setFilter('done',this)">Выполненные</button>
+  <button class="fchip" onclick="setFilter('overdue',this)">Просроченные</button>
+</div>
+
+<div id="pending-wrap">
+  <div class="section-hdr">Активные</div>
+  <div class="task-list" id="pending-list"></div>
+</div>
+<div id="done-wrap" style="display:none;">
+  <div class="section-hdr">Выполненные</div>
+  <div class="task-list" id="done-list"></div>
+</div>
+<div class="empty" id="empty-msg" style="display:none;">Нет задач</div>
+<div class="bottom-safe"></div>
+
+<script>
+let tasks = [];
+try { tasks = JSON.parse(localStorage.getItem('tasks_pwa') || '[]'); } catch(e){}
+let filter = 'all';
+const cats = { work:'Работа', personal:'Личное', health:'Здоровье', learning:'Обучение', other:'Другое' };
+
+function save() { try { localStorage.setItem('tasks_pwa', JSON.stringify(tasks)); } catch(e){} }
+
+function fmtTime(iso) {
+  if (!iso) return null;
+  const d = new Date(iso), now = new Date();
+  const diff = d - now;
+  const ts = new Date(); ts.setHours(0,0,0,0);
+  const td = new Date(d); td.setHours(0,0,0,0);
+  const days = Math.round((td - ts) / 86400000);
+  const hm = d.toLocaleTimeString('ru', {hour:'2-digit', minute:'2-digit'});
+  if (diff < 0) return { text: 'Просрочено ' + d.toLocaleDateString('ru',{day:'numeric',month:'short'}), cls: 'overdue' };
+  if (days === 0) return { text: 'Сегодня ' + hm, cls: 'soon' };
+  if (days === 1) return { text: 'Завтра ' + hm, cls: '' };
+  return { text: d.toLocaleDateString('ru',{day:'numeric',month:'short'}) + ' ' + hm, cls: '' };
+}
+
+function addTask() {
+  const v = document.getElementById('task-input').value.trim();
+  if (!v) return;
+  tasks.unshift({ id: Date.now(), title: v, cat: document.getElementById('task-cat').value, time: document.getElementById('task-time').value || null, done: false, synced: false });
+  save();
+  document.getElementById('task-input').value = '';
+  document.getElementById('task-time').value = '';
+  render();
+}
+
+function toggle(id) {
+  const t = tasks.find(x => x.id === id);
+  if (t) { t.done = !t.done; save(); render(); }
+}
+
+function del(id) {
+  tasks = tasks.filter(x => x.id !== id);
+  save(); render();
+}
+
+function syncGcal(id) {
+  const t = tasks.find(x => x.id === id);
+  if (!t || !t.time) return;
+  t.synced = true; save(); render();
+  alert('Чтобы добавить в Google Calendar, открой этот сайт в браузере на компьютере через Claude.ai — там доступна прямая интеграция.');
+}
+
+function setFilter(f, btn) {
+  filter = f;
+  document.querySelectorAll('.fchip').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  render();
+}
+
+function getFiltered() {
+  const now = new Date();
+  const ts = new Date(); ts.setHours(0,0,0,0);
+  const te = new Date(); te.setHours(23,59,59,999);
+  return tasks.filter(t => {
+    if (filter === 'active') return !t.done;
+    if (filter === 'done') return t.done;
+    if (filter === 'today') return t.time && new Date(t.time) >= ts && new Date(t.time) <= te;
+    if (filter === 'overdue') return !t.done && t.time && new Date(t.time) < now;
+    return true;
+  });
+}
+
+function taskHTML(t) {
+  const tf = t.time ? fmtTime(t.time) : null;
+  const over = tf && tf.cls === 'overdue';
+  const soon = tf && tf.cls === 'soon';
+  const gcal = t.time ? (t.synced ? `<span class="gcal-btn synced">✓ Calendar</span>` : `<button class="gcal-btn" onclick="syncGcal(${t.id})">+ Calendar</button>`) : '';
+  return `<div class="task-item ${t.done?'done-item':''} ${over?'overdue':soon?'soon':''}">
+    <div class="cb ${t.done?'checked':''}" onclick="toggle(${t.id})"></div>
+    <div class="task-body">
+      <div class="task-title">${t.title}</div>
+      <div class="task-meta">
+        <span class="tag ${t.cat}">${cats[t.cat]}</span>
+        ${tf ? `<span class="time-lbl ${tf.cls}">${tf.text}</span>` : ''}
+        ${gcal}
+      </div>
+    </div>
+    <button class="del-btn" onclick="del(${t.id})">×</button>
+  </div>`;
+}
+
+function render() {
+  const f = getFiltered();
+  const pending = f.filter(t => !t.done);
+  const done = f.filter(t => t.done);
+  document.getElementById('pending-list').innerHTML = pending.map(taskHTML).join('');
+  document.getElementById('done-list').innerHTML = done.map(taskHTML).join('');
+  document.getElementById('done-wrap').style.display = done.length ? 'block' : 'none';
+  document.getElementById('empty-msg').style.display = f.length === 0 ? 'block' : 'none';
+  const ts = new Date(); ts.setHours(0,0,0,0);
+  const te = new Date(); te.setHours(23,59,59,999);
+  document.getElementById('s-total').textContent = tasks.length;
+  document.getElementById('s-today').textContent = tasks.filter(t => t.time && new Date(t.time) >= ts && new Date(t.time) <= te && !t.done).length;
+  document.getElementById('s-done').textContent = tasks.filter(t => t.done).length;
+}
+
+document.getElementById('task-input').addEventListener('keydown', e => { if (e.key === 'Enter') addTask(); });
+document.getElementById('hdr-date').textContent = new Date().toLocaleDateString('ru', {weekday:'long', day:'numeric', month:'long'});
+render();
+
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(()=>{});
+}
+</script>
+</body>
+</html>
